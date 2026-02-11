@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useReducer, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 
 export interface Task {
@@ -8,56 +8,63 @@ export interface Task {
 
 const PROFILE_KEY = 'user_tasks';
 
-export function useTasks() {
-    const addTask = useCallback(async (task: Task) => {
-        try {
-            const data = await SecureStore.getItemAsync(PROFILE_KEY);
-            const tasks: Task[] = data ? JSON.parse(data) : [];
+type Action =
+    | { type: 'SET_TASKS'; payload: Task[] }
+    | { type: 'ADD_TASK'; payload: string }
+    | { type: 'DELETE_TASK'; payload: string }
+    | { type: 'MARK_TASK'; payload: string };
 
-            // Make sure task does not exist already
-            if (tasks.filter(t => t.name === task.name).length == 0) {
-                tasks.push(task);
-                await SecureStore.setItemAsync(PROFILE_KEY, JSON.stringify(tasks));
+const tasksReducer = (state: Task[], action: Action): Task[] => {
+    switch (action.type) {
+        case 'SET_TASKS':
+            return action.payload;
+
+        case 'ADD_TASK':
+            if (state.some(t => t.name === action.payload)) {
+                return state;
             }
-        } catch (e) {
-            throw e;
-        }
-    }, []);
+            return [...state, { name: action.payload, marked: false }];
 
-    const getTasks = useCallback(async (): Promise<Task[] | null> => {
-        try {
-            const data = await SecureStore.getItemAsync(PROFILE_KEY);
-            return data ? JSON.parse(data) : null;
-        } catch (e) {
-            throw e;
-        }
-    }, []);
+        case 'DELETE_TASK':
+            return state.filter(t => t.name !== action.payload);
 
-    const deleteTask = useCallback(async (task: Task) => {
-        try {
-            const data = await SecureStore.getItemAsync(PROFILE_KEY);
-            const tasks: Task[] = data ? JSON.parse(data) : [];
-            const filteredTasks = tasks.filter(t => t.name != task.name);
-            await SecureStore.setItemAsync(PROFILE_KEY, JSON.stringify(filteredTasks));
-        } catch (e) {
-            throw e;
-        }
-    }, []);
-
-    const markTask = useCallback(async (task: Task) => {
-        try {
-            const data = await SecureStore.getItemAsync(PROFILE_KEY);
-            const tasks: Task[] = data ? JSON.parse(data) : [];
-            const updatedTasks = tasks.map(t => 
-                t.name === task.name 
-                    ? { ...t, marked: !t.marked } 
+        case 'MARK_TASK':
+            return state.map(t =>
+                t.name === action.payload
+                    ? { ...t, marked: !t.marked }
                     : t
             );
-            await SecureStore.setItemAsync(PROFILE_KEY, JSON.stringify(updatedTasks));
-        } catch (e) {
-            throw e;
-        }
+
+        default:
+            return state;
+    }
+}
+
+export function useTasks() {
+    const [tasks, dispatch] = useReducer(tasksReducer, []);
+    useEffect(() => {
+        const loadTasks = async () => {
+            const data = await SecureStore.getItemAsync(PROFILE_KEY);
+            if (data) {
+                dispatch({ type: 'SET_TASKS', payload: JSON.parse(data) });
+            }
+        };
+        loadTasks();
     }, []);
 
-    return { addTask, getTasks, deleteTask, markTask };
+    useEffect(() => {
+        SecureStore.setItemAsync(PROFILE_KEY, JSON.stringify(tasks));
+    }, [tasks]);
+
+    return {
+        tasks,
+        addTask: (name: string) =>
+            dispatch({ type: 'ADD_TASK', payload: name }),
+
+        deleteTask: (name: string) =>
+            dispatch({ type: 'DELETE_TASK', payload: name }),
+
+        markTask: (name: string) =>
+            dispatch({ type: 'MARK_TASK', payload: name }),
+    };
 }

@@ -2,16 +2,13 @@ import * as React from 'react';
 import { Appbar, TextInput, Text, Button } from 'react-native-paper';
 import { StyleSheet, View } from 'react-native';
 import { useState } from 'react';
-import { useTasks } from '../hooks/useTasks';
 
 interface CustomAppBarProps {
-    onTaskAdded: () => void;
+    addTask: (name: string) => void;
 }
 
-const CustomAppBar: React.FC<CustomAppBarProps> = ({onTaskAdded}) => {
+const CustomAppBar: React.FC<CustomAppBarProps> = ({addTask}) => {
     const [task, setTask] = useState('');
-
-    const {addTask} = useTasks();
 
     return (
         <Appbar.Header>
@@ -30,9 +27,8 @@ const CustomAppBar: React.FC<CustomAppBarProps> = ({onTaskAdded}) => {
                         style={styles.button}
                         onPress={async() => {
                             if (task.trim().length > 0) {
-                                await addTask({name: task.trim(), marked: false});
+                                addTask(task.trim());
                                 setTask('');
-                                onTaskAdded();
                             }
                         }
                     }

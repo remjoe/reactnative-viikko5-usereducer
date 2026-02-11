@@ -5,16 +5,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import TasksScreen from './screens/TasksScreen';
-import { useState, useCallback } from 'react';
+import { useTasks } from './hooks/useTasks';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [refresh, setRefresh] = useState(0);
-
-  const triggerRefresh = useCallback(() => {
-    setRefresh(prev => prev + 1);
-  }, []);
+  const tasksHook = useTasks();
 
   return (
     <PaperProvider>
@@ -23,11 +19,11 @@ export default function App() {
         id="Navigator"
         initialRouteName="Tasks"
         screenOptions={{
-          header: () => <CustomAppBar onTaskAdded={triggerRefresh} />
+          header: () => <CustomAppBar addTask={tasksHook.addTask} />
         }}
         >
           <Stack.Screen name="Tasks">
-            {() => <TasksScreen refreshKey={refresh} onTaskUpdated={triggerRefresh} />}
+            {() => <TasksScreen tasks={tasksHook.tasks} markTask={tasksHook.markTask} deleteTask={tasksHook.deleteTask} />}
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
